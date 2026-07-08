@@ -37,44 +37,8 @@ function parseRank(val: string): number {
   return isNaN(num) ? 999999999 : num;
 }
 
-// --- Yardımcı: Fakülte/program türünü belirle ---
-// Gerçek veri analizi sonuçlarına göre güncellenmiş keyword'lar:
-//   - MYO/2 yıllık: fakülte adında 'yüksekokul' geçiyor, sure_yil='2' YOK (bu dataset sadece 4/5/6 yıl)
-//   - Açıköğretim: 'Açıköğretim Fakültesi' veya 'Açık ve Uzaktan Eğitim Fakültesi'
-//   - Uzaktan: 'Açık ve Uzaktan Eğitim Fakültesi'
-//   - 5 yıllık: Diş Hekimliği, Eczacılık, Mimarlık bazı bölümler
-//   - 6 yıllık: Tıp Fakültesi
 function getProgramTuru(item: UniversityProgram): string {
-  const f = (item.fakulte || '').toLowerCase();
-  const b = (item.bolum_program || '').toLowerCase();
-  const ek = (item.ek_bilgi || '').toLowerCase();
-
-  // Uzaktan eğitim: 'açık ve uzaktan eğitim fakültesi'
-  if (f.includes('uzaktan')) {
-    return 'uzaktan';
-  }
-
-  // Açıköğretim: 'açıköğretim fakültesi' (uzaktan olmayan)
-  if (f.includes('açıköğretim') || b.includes('açıköğretim') || ek.includes('açıköğretim')) {
-    return item.sure_yil === '2' ? 'acikogretim_2' : 'acikogretim_4';
-  }
-
-  // Y.O. (Yüksekokul) - 4 yıllık lisans ama fakülte değil Y.O.
-  if (f.includes('yüksekokul') || f.includes('yüksek okul')) {
-    return 'yuksekokul';
-  }
-
-  // 2 yıllık: MYO (bu datasette sure_yil=2 olan yok ama ilerisi için)
-  if (item.sure_yil === '2') {
-    return '2_yillik';
-  }
-
-  // Özel yetenek
-  if (b.includes('özel yetenek') || ek.includes('özel yetenek')) {
-    return 'ozel_yetenek';
-  }
-
-  return '4_yillik';
+  return item.program_turu || 'LİSANS';
 }
 
 export async function GET(request: Request) {
@@ -85,6 +49,7 @@ export async function GET(request: Request) {
   const sehir = searchParams.get('sehir') || '';
   const universite = searchParams.get('universite') || '';
   const program_turu = searchParams.get('program_turu') || '';
+  const universite_turu = searchParams.get('universite_turu') || '';
   const uyruk = searchParams.get('uyruk') || '';
   const sira_min = searchParams.get('sira_min') ? parseFloat(searchParams.get('sira_min')!) : null;
   const sira_max = searchParams.get('sira_max') ? parseFloat(searchParams.get('sira_max')!) : null;
@@ -97,6 +62,12 @@ export async function GET(request: Request) {
   const sehit_gazi = searchParams.get('sehit_gazi') === '1';
   const kadin_34 = searchParams.get('kadin_34') === '1';
 
+  const burs = searchParams.get('burs') || '';
+  const dil = searchParams.get('dil') || '';
+  const kibris = searchParams.get('kibris') === '1';
+  const mtok = searchParams.get('mtok') === '1';
+  const akreditasyon = searchParams.get('akreditasyon') === '1';
+
   const siralama = searchParams.get('siralama') || 'basari_sirasi';
   const page = parseInt(searchParams.get('page') || '1', 10);
   const limit = parseInt(searchParams.get('limit') || '50', 10);
@@ -108,18 +79,23 @@ export async function GET(request: Request) {
 
   // --- Filtering ---
   data = data.filter((item) => {
-    if (puan_tipi && item.puan_tipi !== puan_tipi) return false;
+    if (puan_tipi) {
+      const arr = puan_tipi.split(',');
+      if (!arr.includes(item.puan_tipi)) return false;
+    }
     if (sehir && item.sehir !== sehir) return false;
     if (universite && item.universite !== universite) return false;
 
     // Program türü filtresi
     if (program_turu) {
-      const tur = getProgramTuru(item);
-      if (program_turu === 'ozel_yetenek') {
-        if (tur !== 'ozel_yetenek') return false;
-      } else if (tur !== program_turu) {
-        return false;
-      }
+      const arr = program_turu.split(',');
+      if (!arr.includes(item.program_turu)) return false;
+    }
+
+    // Üniversite türü filtresi
+    if (universite_turu) {
+      const arr = universite_turu.split(',');
+      if (!arr.includes(item.universite_turu)) return false;
     }
 
     // Uyruk filtresi: ozel_kosullar alanında T.C.=kod 22, KKTC=bazı kodlar
@@ -166,6 +142,41 @@ export async function GET(request: Request) {
       const genel = parseInt(item.kontenjan_2025_genel) || 0;
       const yerlesen = parseInt(item.kontenjan_2025_yrlsn) || 0;
       if (genel > 0 && yerlesen >= genel) return false;
+    }
+
+    // Yeni Özel Filtreler
+    if (kibris) {
+      if (item.sehir !== 'KIBRIS') return false;
+    }
+
+    if (mtok) {
+      const e = (item.ek_bilgi || '').toLowerCase();
+      if (!e.includes('m.t.o.k.')) return false;
+    }
+
+    if (akreditasyon) {
+      const a = item.akreditasyon || '';
+      if (!a || a === '*' || a === '-') return false;
+    }
+
+    if (burs) {
+      const e = (item.ek_bilgi || '').toLowerCase();
+      if (burs === 'tam_burslu') {
+        // İçinde "burslu" geçsin ama "%50" veya "%25" geçmesin
+        if (!e.includes('burslu') || e.includes('%50') || e.includes('%25')) return false;
+      } else if (burs === 'indirimli_50') {
+        if (!e.includes('%50')) return false;
+      } else if (burs === 'indirimli_25') {
+        if (!e.includes('%25')) return false;
+      } else if (burs === 'ucretli') {
+        if (!e.includes('ücretli')) return false;
+      }
+    }
+
+    if (dil) {
+      const targetStr = dil.toLocaleLowerCase('tr-TR');
+      const egitimDili = (item.egitim_dili || '').toLocaleLowerCase('tr-TR');
+      if (!egitimDili.includes(targetStr)) return false;
     }
 
     // Sıralama aralığı filtresi

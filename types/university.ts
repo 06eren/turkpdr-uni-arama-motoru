@@ -22,6 +22,10 @@ export interface UniversityProgram {
   akreditasyon: string;
   tyc_durumu: string;
   program_id: string;
+  universite_turu: string;
+  program_turu: string;
+  egitim_dili: string;
+  ucret_burs: string;
 }
 
 export interface PaginatedResponse<T> {

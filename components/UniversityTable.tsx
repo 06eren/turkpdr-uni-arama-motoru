@@ -77,7 +77,7 @@ export default function UniversityTable({
             {data.map((item, idx) => (
               <tr
                 key={`${item.program_kodu}-${idx}`}
-                className="border-b border-gray-50 hover:bg-blue-50/20 transition-colors group"
+                className="border-b border-gray-50 hover:bg-blue-50/40 hover:shadow-[0_4px_15px_rgba(0,0,0,0.05)] hover:-translate-y-[1px] relative z-0 hover:z-10 transition-all duration-300 ease-out group"
               >
                 <td className="px-3 py-2.5 text-xs text-gray-400 border-r border-gray-50">{item.sira_no}</td>
                 <td className="px-3 py-2.5 font-mono text-xs text-gray-500 border-r border-gray-50">{item.program_kodu}</td>
@@ -88,16 +88,45 @@ export default function UniversityTable({
                 </td>
                 <td className="px-3 py-2.5 border-r border-gray-50">
                   <div className="font-semibold text-gray-900 text-xs leading-tight">{item.universite}</div>
-                  <div className="text-[10px] text-gray-400 mt-0.5">{item.sehir}</div>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <span className="text-[10px] text-gray-500 font-medium">{item.sehir}</span>
+                    {item.universite_turu && (
+                      <span className="px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded text-[9px] font-semibold tracking-wide">
+                        {item.universite_turu}
+                      </span>
+                    )}
+                  </div>
                 </td>
                 <td className="px-3 py-2.5 border-r border-gray-50 whitespace-normal max-w-[280px]">
                   <div className="font-medium text-blue-700 text-xs leading-tight">{item.bolum_program}</div>
-                  <div className="text-[10px] text-gray-400 mt-0.5">{item.fakulte}</div>
-                  {item.ek_bilgi && item.ek_bilgi !== '*' && (
-                    <span className="inline-block mt-0.5 px-1.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-100 rounded text-[9px] font-medium">
-                      {item.ek_bilgi}
-                    </span>
-                  )}
+                  <div className="text-[10px] text-gray-400 mt-0.5 mb-1">{item.fakulte}</div>
+                  <div className="flex flex-wrap gap-1 mt-0.5">
+                    {item.ucret_burs && item.ucret_burs !== 'Ücretli' && (
+                      <span className="inline-flex px-1.5 py-0.5 bg-green-50 text-green-700 border border-green-100 rounded text-[9px] font-bold">
+                        {item.ucret_burs}
+                      </span>
+                    )}
+                    {item.ucret_burs === 'Ücretli' && (
+                      <span className="inline-flex px-1.5 py-0.5 bg-rose-50 text-rose-700 border border-rose-100 rounded text-[9px] font-bold">
+                        {item.ucret_burs}
+                      </span>
+                    )}
+                    {item.egitim_dili && item.egitim_dili !== 'Türkçe' && (
+                      <span className="inline-flex px-1.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 rounded text-[9px] font-bold">
+                        {item.egitim_dili}
+                      </span>
+                    )}
+                    {item.program_turu && item.program_turu !== 'LİSANS' && (
+                      <span className="inline-flex px-1.5 py-0.5 bg-purple-50 text-purple-700 border border-purple-100 rounded text-[9px] font-bold">
+                        {item.program_turu}
+                      </span>
+                    )}
+                    {item.ek_bilgi && item.ek_bilgi !== '*' && (
+                      <span className="inline-flex px-1.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-100 rounded text-[9px] font-medium">
+                        {item.ek_bilgi}
+                      </span>
+                    )}
+                  </div>
                 </td>
                 <td className="px-3 py-2.5 text-center text-xs text-gray-500 border-r border-gray-50">{item.sure_yil}</td>
 

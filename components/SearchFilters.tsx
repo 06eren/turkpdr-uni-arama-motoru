@@ -1,12 +1,9 @@
 "use client";
 
-import React, { useState } from 'react';
-import {
-  Search, SlidersHorizontal, X, ChevronDown, ChevronUp
-} from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Search, SlidersHorizontal, X, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface FilterOptions {
-  puanTipleri: string[];
   sehirler: string[];
   universiteler: string[];
 }
@@ -22,6 +19,8 @@ interface SearchFiltersProps {
   setUniversite: (u: string) => void;
   programTuru: string;
   setProgramTuru: (t: string) => void;
+  universiteTuru: string;
+  setUniversiteTuru: (t: string) => void;
   uyruk: string;
   setUyruk: (u: string) => void;
   siralama: string;
@@ -46,17 +45,42 @@ interface SearchFiltersProps {
   setSehitGazi: (v: boolean) => void;
   kadin34: boolean;
   setKadin34: (v: boolean) => void;
+  burs: string;
+  setBurs: (s: string) => void;
+  dil: string;
+  setDil: (s: string) => void;
+  kibris: boolean;
+  setKibris: (v: boolean) => void;
+  mtok: boolean;
+  setMtok: (v: boolean) => void;
+  akreditasyon: boolean;
+  setAkreditasyon: (v: boolean) => void;
   onReset: () => void;
   filterOptions: FilterOptions | null;
   total: number;
 }
 
+const PUAN_TURLERI = [
+  { value: 'SAY', label: 'SAY' },
+  { value: 'SÖZ', label: 'SÖZ' },
+  { value: 'EA', label: 'EA' },
+  { value: 'DİL', label: 'DİL' },
+  { value: 'TYT', label: 'TYT' },
+];
+
 const PROGRAM_TURLERI = [
-  { value: '4_yillik',      label: 'Fakülte (4 Yıllık)',   sub: 'Lisans' },
-  { value: 'yuksekokul',    label: 'Yüksekokul (Y.O.)',    sub: '4 Yıllık Lisans' },
-  { value: 'ozel_yetenek',  label: 'Özel Yetenek',          sub: 'Fakülte / Y.O.' },
-  { value: 'acikogretim_4', label: 'Açıköğretim (4Y)',     sub: 'Sadece Açıköğretim' },
-  { value: 'uzaktan',       label: 'Uzaktan Eğitim',       sub: 'Açık + Uzaktan' },
+  { value: 'LİSANS', label: 'LİSANS' },
+  { value: 'ÖNLİSANS', label: 'ÖNLİSANS' },
+  { value: 'ÖZEL YETENEK', label: 'ÖZEL YETENEK' },
+];
+
+const UNIVERSITE_TURLERI = [
+  { value: 'DEVLET', label: 'DEVLET' },
+  { value: 'VAKIF', label: 'VAKIF' },
+  { value: 'KKTC', label: 'KKTC' },
+  { value: 'YURTDISI VAKIF', label: 'YURTDIŞI VAKIF' },
+  { value: 'VAKIF MYO', label: 'VAKIF MYO' },
+  { value: 'YURTDISI KAMU', label: 'YURTDIŞI KAMU' },
 ];
 
 const OZEL_KOSULLAR = [
@@ -66,7 +90,71 @@ const OZEL_KOSULLAR = [
   { key: 'depremzede',    label: 'Depremzede Kontenjanı' },
   { key: 'sehitGazi',     label: 'Şehit / Gazi Yakını' },
   { key: 'kadin34',       label: '34 Yaş Üstü Kadın' },
+  { key: 'mtok',          label: 'M.T.O.K.' },
+  { key: 'akreditasyon',  label: 'Akreditasyonlu' },
+  { key: 'kibris',        label: 'KKTC Üniversiteleri' },
 ];
+
+function MultiSelectDropdown({ label, options, selectedValues, onChange }: {
+  label: string; options: {value: string, label: string}[]; selectedValues: string; onChange: (v: string) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const selectedArray = selectedValues ? selectedValues.split(',') : [];
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const toggleVal = (val: string) => {
+    if (selectedArray.includes(val)) {
+      onChange(selectedArray.filter(v => v !== val).join(','));
+    } else {
+      onChange([...selectedArray, val].join(','));
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-1 min-w-0 relative" ref={containerRef}>
+      <label className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">{label}</label>
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          className="w-full h-9 px-3 text-left text-sm text-gray-800 bg-white border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/30 flex items-center justify-between"
+        >
+          <span className="truncate pr-2">{selectedArray.length > 0 ? `${selectedArray.length} seçildi` : 'Tümü'}</span>
+          <ChevronDown className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+        </button>
+        {isOpen && (
+          <div className="absolute z-20 w-[200px] mt-1 bg-white border border-gray-100 rounded-xl shadow-2xl max-h-60 overflow-y-auto left-0 animate-dropdown origin-top ring-1 ring-black/5">
+            <div className="p-1">
+              {options.map(opt => (
+                <label key={opt.value} className="flex items-center gap-2.5 px-2.5 py-2 text-sm hover:bg-blue-50/50 rounded-lg cursor-pointer transition-colors group">
+                  <div className="relative flex items-center justify-center">
+                    <input type="checkbox" checked={selectedArray.includes(opt.value)} onChange={() => toggleVal(opt.value)} className="appearance-none w-4 h-4 rounded border border-gray-300 checked:bg-blue-600 checked:border-blue-600 transition-colors cursor-pointer group-hover:border-blue-400" />
+                    {selectedArray.includes(opt.value) && (
+                      <svg className="w-2.5 h-2.5 text-white absolute pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </div>
+                  <span className="text-gray-700 group-hover:text-blue-900 transition-colors font-medium">{opt.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function SelectBox({ label, value, onChange, disabled, children }: {
   label: string; value: string; onChange: (v: string) => void;
@@ -96,10 +184,10 @@ function ToggleChip({ active, onClick, children }: {
   return (
     <button
       onClick={onClick}
-      className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-all duration-150 whitespace-nowrap ${
+      className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-all duration-200 active:scale-95 whitespace-nowrap ${
         active
-          ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-          : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+          ? 'bg-blue-600 text-white border-blue-600 shadow-md transform -translate-y-[1px]'
+          : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:bg-blue-50/30 hover:shadow-sm hover:-translate-y-[1px] hover:text-blue-700'
       }`}
     >
       {children}
@@ -113,6 +201,7 @@ export default function SearchFilters({
   sehir, setSehir,
   universite, setUniversite,
   programTuru, setProgramTuru,
+  universiteTuru, setUniversiteTuru,
   uyruk, setUyruk,
   siralama, setSiralama,
   siraMin, setSiraMin, siraMax, setSiraMax,
@@ -123,13 +212,19 @@ export default function SearchFilters({
   depremzede, setDepremzede,
   sehitGazi, setSehitGazi,
   kadin34, setKadin34,
+  burs, setBurs,
+  dil, setDil,
+  kibris, setKibris,
+  mtok, setMtok,
+  akreditasyon, setAkreditasyon,
   onReset, filterOptions, total,
 }: SearchFiltersProps) {
   const [open, setOpen] = useState(false);
 
   const activeCount = [
-    puanTipi, sehir, universite, programTuru, uyruk,
+    puanTipi, sehir, universite, programTuru, universiteTuru, uyruk,
     yeniAcilan, dolmamis, okulBirincisi, depremzede, sehitGazi, kadin34,
+    burs, dil, kibris, mtok, akreditasyon,
     siraMin, siraMax, puanMin, puanMax,
   ].filter(Boolean).length;
 
@@ -140,10 +235,13 @@ export default function SearchFilters({
     depremzede:    { get: depremzede,    set: setDepremzede },
     sehitGazi:     { get: sehitGazi,     set: setSehitGazi },
     kadin34:       { get: kadin34,       set: setKadin34 },
+    mtok:          { get: mtok,          set: setMtok },
+    akreditasyon:  { get: akreditasyon,  set: setAkreditasyon },
+    kibris:        { get: kibris,        set: setKibris },
   };
 
   return (
-    <div className="bg-white border-b border-gray-100">
+    <div className="bg-white border-b border-gray-100 relative z-10">
       {/* ── Ana Satır ─────────────────────────────────────────────── */}
       <div className="px-5 py-3 flex flex-wrap items-end gap-3">
 
@@ -161,10 +259,7 @@ export default function SearchFilters({
 
         {/* Puan Türü */}
         <div className="w-28">
-          <SelectBox label="Puan Türü" value={puanTipi} onChange={setPuanTipi} disabled={!filterOptions}>
-            <option value="">Tümü</option>
-            {filterOptions?.puanTipleri.map(pt => <option key={pt} value={pt}>{pt}</option>)}
-          </SelectBox>
+          <MultiSelectDropdown label="Puan Türü" options={PUAN_TURLERI} selectedValues={puanTipi} onChange={setPuanTipi} />
         </div>
 
         {/* Şehir */}
@@ -194,12 +289,10 @@ export default function SearchFilters({
 
         {/* Spacer + Sağ taraf */}
         <div className="flex items-end gap-2 ml-auto">
-          {/* Toplam sayı */}
           <span className="text-sm font-semibold text-gray-500 whitespace-nowrap pb-0.5">
             <span className="text-gray-900 text-base">{total.toLocaleString('tr-TR')}</span> program
           </span>
 
-          {/* Gelişmiş Filtreler */}
           <button
             onClick={() => setOpen(o => !o)}
             className={`flex items-center gap-1.5 h-9 px-3.5 rounded-lg border text-xs font-semibold transition-all ${
@@ -218,7 +311,6 @@ export default function SearchFilters({
             {open ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
           </button>
 
-          {/* Temizle */}
           {activeCount > 0 && (
             <button
               onClick={onReset}
@@ -233,24 +325,16 @@ export default function SearchFilters({
 
       {/* ── Gelişmiş Panel ────────────────────────────────────────── */}
       {open && (
-        <div className="border-t border-gray-100 px-5 py-4 bg-gray-50/60">
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-x-8 gap-y-5">
+        <div className="border-t border-gray-100 px-5 py-5 bg-gradient-to-b from-gray-50/80 to-white relative z-0 animate-slide-down">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-x-8 gap-y-6">
 
-            {/* Program Türü */}
-            <div className="xl:col-span-2">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-2">Program Türü</p>
-              <div className="flex flex-wrap gap-1.5">
-                <ToggleChip active={programTuru === ''} onClick={() => setProgramTuru('')}>Tümü</ToggleChip>
-                {PROGRAM_TURLERI.map(pt => (
-                  <ToggleChip
-                    key={pt.value}
-                    active={programTuru === pt.value}
-                    onClick={() => setProgramTuru(programTuru === pt.value ? '' : pt.value)}
-                  >
-                    {pt.label}
-                  </ToggleChip>
-                ))}
-              </div>
+            <div className="flex gap-4">
+               <div className="w-full">
+                  <MultiSelectDropdown label="Ön Lisans / Lisans" options={PROGRAM_TURLERI} selectedValues={programTuru} onChange={setProgramTuru} />
+               </div>
+               <div className="w-full">
+                  <MultiSelectDropdown label="Üniversite Türü" options={UNIVERSITE_TURLERI} selectedValues={universiteTuru} onChange={setUniversiteTuru} />
+               </div>
             </div>
 
             {/* Uyruk */}
@@ -270,7 +354,7 @@ export default function SearchFilters({
             </div>
 
             {/* Özel Koşullar */}
-            <div>
+            <div className="xl:col-span-2">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-2">Özel Koşullar</p>
               <div className="flex flex-wrap gap-1.5">
                 {OZEL_KOSULLAR.map(({ key, label }) => (
@@ -280,6 +364,42 @@ export default function SearchFilters({
                     onClick={() => kosulMap[key].set(!kosulMap[key].get)}
                   >
                     {label}
+                  </ToggleChip>
+                ))}
+              </div>
+            </div>
+
+            {/* Eğitim Dili */}
+            <div className="xl:col-span-2">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-2">Eğitim Dili</p>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { value: '', label: 'Tümü' },
+                  { value: 'İngilizce', label: 'İngilizce' },
+                  { value: 'Arapça', label: 'Arapça' },
+                  { value: 'Almanca', label: 'Almanca' },
+                  { value: 'Fransızca', label: 'Fransızca' },
+                ].map(opt => (
+                  <ToggleChip key={opt.value} active={dil === opt.value} onClick={() => setDil(opt.value)}>
+                    {opt.label}
+                  </ToggleChip>
+                ))}
+              </div>
+            </div>
+
+            {/* Burs Durumu */}
+            <div className="xl:col-span-2">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-2">Burs Durumu</p>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { value: '', label: 'Tümü' },
+                  { value: 'tam_burslu', label: 'Tam Burslu' },
+                  { value: 'indirimli_50', label: '%50 İndirimli' },
+                  { value: 'indirimli_25', label: '%25 İndirimli' },
+                  { value: 'ucretli', label: 'Ücretli' },
+                ].map(opt => (
+                  <ToggleChip key={opt.value} active={burs === opt.value} onClick={() => setBurs(opt.value)}>
+                    {opt.label}
                   </ToggleChip>
                 ))}
               </div>
