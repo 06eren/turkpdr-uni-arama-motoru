@@ -1,65 +1,156 @@
-import Image from "next/image";
+"use client";
+
+import React, { useState, useEffect } from 'react';
+import SearchFilters from '@/components/SearchFilters';
+import UniversityTable from '@/components/UniversityTable';
+import { UniversityProgram, PaginatedResponse } from '@/types/university';
 
 export default function Home() {
+  const [data, setData] = useState<UniversityProgram[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [filterOptions, setFilterOptions] = useState(null);
+
+  // Temel filtreler
+  const [searchQuery, setSearchQuery] = useState('');
+  const [puanTipi, setPuanTipi] = useState('');
+  const [sehir, setSehir] = useState('');
+  const [universite, setUniversite] = useState('');
+  const [siralama, setSiralama] = useState('basari_sirasi');
+
+  // Gelişmiş filtreler
+  const [programTuru, setProgramTuru] = useState('');
+  const [uyruk, setUyruk] = useState('');
+  const [siraMin, setSiraMin] = useState('');
+  const [siraMax, setSiraMax] = useState('');
+  const [puanMin, setPuanMin] = useState('');
+  const [puanMax, setPuanMax] = useState('');
+  const [yeniAcilan, setYeniAcilan] = useState(false);
+  const [dolmamis, setDolmamis] = useState(false);
+  const [okulBirincisi, setOkulBirincisi] = useState(false);
+  const [depremzede, setDepremzede] = useState(false);
+  const [sehitGazi, setSehitGazi] = useState(false);
+  const [kadin34, setKadin34] = useState(false);
+
+  // Debounced arama
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchQuery), 400);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
+  // Debounced aralıklar
+  const [dSiraMin, setDSiraMin] = useState('');
+  const [dSiraMax, setDSiraMax] = useState('');
+  const [dPuanMin, setDPuanMin] = useState('');
+  const [dPuanMax, setDPuanMax] = useState('');
+  useEffect(() => { const t = setTimeout(() => setDSiraMin(siraMin), 600); return () => clearTimeout(t); }, [siraMin]);
+  useEffect(() => { const t = setTimeout(() => setDSiraMax(siraMax), 600); return () => clearTimeout(t); }, [siraMax]);
+  useEffect(() => { const t = setTimeout(() => setDPuanMin(puanMin), 600); return () => clearTimeout(t); }, [puanMin]);
+  useEffect(() => { const t = setTimeout(() => setDPuanMax(puanMax), 600); return () => clearTimeout(t); }, [puanMax]);
+
+  // Filter options (1 kere)
+  useEffect(() => {
+    fetch('/api/universities/filters').then(r => r.json()).then(setFilterOptions).catch(console.error);
+  }, []);
+
+  // Sayfa sıfırlama
+  const filterDeps = [debouncedSearch, puanTipi, sehir, universite, programTuru, uyruk,
+    dSiraMin, dSiraMax, dPuanMin, dPuanMax,
+    yeniAcilan, dolmamis, okulBirincisi, depremzede, sehitGazi, kadin34, siralama];
+  useEffect(() => { setPage(1); }, filterDeps); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Data fetch
+  useEffect(() => {
+    let cancelled = false;
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const p = new URLSearchParams({ page: page.toString(), limit: '50' });
+        if (debouncedSearch) p.append('q', debouncedSearch);
+        if (puanTipi) p.append('puan_tipi', puanTipi);
+        if (sehir) p.append('sehir', sehir);
+        if (universite) p.append('universite', universite);
+        if (programTuru) p.append('program_turu', programTuru);
+        if (uyruk) p.append('uyruk', uyruk);
+        if (dSiraMin) p.append('sira_min', dSiraMin);
+        if (dSiraMax) p.append('sira_max', dSiraMax);
+        if (dPuanMin) p.append('puan_min', dPuanMin);
+        if (dPuanMax) p.append('puan_max', dPuanMax);
+        if (yeniAcilan) p.append('yeni_acilan', '1');
+        if (dolmamis) p.append('dolmamis', '1');
+        if (okulBirincisi) p.append('okul_birincisi', '1');
+        if (depremzede) p.append('depremzede', '1');
+        if (sehitGazi) p.append('sehit_gazi', '1');
+        if (kadin34) p.append('kadin_34', '1');
+        p.append('siralama', siralama);
+
+        const res = await fetch(`/api/universities?${p}`);
+        const json: PaginatedResponse<UniversityProgram> = await res.json();
+        if (!cancelled) {
+          setData(json.data);
+          setTotal(json.total);
+          setTotalPages(json.totalPages);
+        }
+      } catch (e) {
+        console.error(e);
+        if (!cancelled) setData([]);
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    };
+    fetchData();
+    return () => { cancelled = true; };
+  }, [page, debouncedSearch, puanTipi, sehir, universite, programTuru, uyruk,
+      dSiraMin, dSiraMax, dPuanMin, dPuanMax,
+      yeniAcilan, dolmamis, okulBirincisi, depremzede, sehitGazi, kadin34, siralama]);
+
+  const handleReset = () => {
+    setSearchQuery(''); setPuanTipi(''); setSehir(''); setUniversite('');
+    setProgramTuru(''); setUyruk(''); setSiraMin(''); setSiraMax('');
+    setPuanMin(''); setPuanMax('');
+    setYeniAcilan(false); setDolmamis(false); setOkulBirincisi(false);
+    setDepremzede(false); setSehitGazi(false); setKadin34(false);
+    setSiralama('basari_sirasi'); setPage(1);
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <main className="min-h-screen bg-white flex flex-col">
+      <SearchFilters
+        searchQuery={searchQuery} setSearchQuery={setSearchQuery}
+        puanTipi={puanTipi} setPuanTipi={setPuanTipi}
+        sehir={sehir} setSehir={setSehir}
+        universite={universite} setUniversite={setUniversite}
+        programTuru={programTuru} setProgramTuru={setProgramTuru}
+        uyruk={uyruk} setUyruk={setUyruk}
+        siralama={siralama} setSiralama={setSiralama}
+        siraMin={siraMin} setSiraMin={setSiraMin}
+        siraMax={siraMax} setSiraMax={setSiraMax}
+        puanMin={puanMin} setPuanMin={setPuanMin}
+        puanMax={puanMax} setPuanMax={setPuanMax}
+        yeniAcilan={yeniAcilan} setYeniAcilan={setYeniAcilan}
+        dolmamis={dolmamis} setDolmamis={setDolmamis}
+        okulBirincisi={okulBirincisi} setOkulBirincisi={setOkulBirincisi}
+        depremzede={depremzede} setDepremzede={setDepremzede}
+        sehitGazi={sehitGazi} setSehitGazi={setSehitGazi}
+        kadin34={kadin34} setKadin34={setKadin34}
+        onReset={handleReset}
+        filterOptions={filterOptions}
+        total={total}
+      />
+
+      <div className="flex-1 p-4">
+        <UniversityTable
+          data={data}
+          isLoading={isLoading}
+          page={page}
+          total={total}
+          totalPages={totalPages}
+          onPageChange={setPage}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+      </div>
+    </main>
   );
 }

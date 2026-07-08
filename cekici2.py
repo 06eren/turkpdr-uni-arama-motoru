@@ -10,8 +10,6 @@ import re
 # ============================================================
 BASE_URL = "https://universitetercihleri.com/ddtercih/search"
 SAYFA_BASI_KAYIT = 100
-SAYFALAMA_TIPI = "offset"   # "sayfa" -> /search/1/100/0, /search/2/100/0 ...
-                           # "offset" -> /search/0/100/0, /search/100/100/0 ...
 UCUNCU_PARAM = 0
 
 CHECKPOINT_DOSYA = "checkpoint.json"
@@ -21,38 +19,37 @@ CHECKPOINT_ARALIK = 10
 MAX_DENEME = 3
 MIN_SUTUN = 23
 
-SUTUN_ESLEME = {
-    "sira_no": 3,
-    "program_kodu": 4,
-    "puan_tipi": 5,
-    "universite": 6,
-    "bolum_program": 7,
-    "ek_bilgi": 8,
-    "sure_yil": 9,
-    "basari_sirasi_2025": 10,
-    "basari_sirasi_2024": 11,
-    "basari_sirasi_2023": 12,
-    "taban_puani_2025": 13,
-    "taban_puani_2024": 14,
-    "taban_puani_2023": 15,
-    "kontenjanlar": 16,
-    "ozel_kosullar": 20,
-    "akreditasyon": 21,
-    "tyc_durumu": 22,
-}
 # ============================================================
 
 
 def temizle(metin):
+    """Fazla boşlukları tek boşluğa indirir, baş/son boşlukları siler."""
     return re.sub(r'\s+', ' ', metin).strip()
 
 
+def hucre_ayir(hucre):
+    """
+    <strong> etiketindeki ana metni (üniversite/bölüm adı) ve
+    <span class="info"> içindeki ikincil metni (şehir/fakülte) ayırır.
+    Örnek: <strong>KOÇ</strong><span class="info">İSTANBUL</span>
+           -> ("KOÇ", "İSTANBUL")
+    """
+    strong_tag = hucre.find('strong')
+    info_tag = hucre.find('span', class_='info')
+
+    if strong_tag:
+        ana = temizle(strong_tag.get_text(strip=True))
+    else:
+        ana = temizle(hucre.get_text(separator=" ", strip=True))
+
+    detay = temizle(info_tag.get_text(strip=True)) if info_tag else ""
+
+    return ana, detay
+
+
 def url_olustur(sayfa):
-    if SAYFALAMA_TIPI == "sayfa":
-        birinci_param = sayfa
-    else:  # offset
-        birinci_param = (sayfa - 1) * SAYFA_BASI_KAYIT
-    return f"{BASE_URL}/{birinci_param}/{SAYFA_BASI_KAYIT}/{UCUNCU_PARAM}"
+    offset = (sayfa - 1) * SAYFA_BASI_KAYIT
+    return f"{BASE_URL}/{offset}/{SAYFA_BASI_KAYIT}/{UCUNCU_PARAM}"
 
 
 def veri_cek():
@@ -70,7 +67,6 @@ def veri_cek():
 
     print("=" * 60)
     print("VERİ ÇEKME İŞLEMİ BAŞLATILDI")
-    print(f"Sayfalama tipi: {SAYFALAMA_TIPI}")
     print("=" * 60 + "\n")
 
     if os.path.exists(CHECKPOINT_DOSYA):
@@ -118,21 +114,58 @@ def veri_cek():
         yeni_eklenen = 0
 
         for satir in satirlar[2:]:
-            sutunlar = [
-                temizle(hucre.get_text(separator=" ", strip=True))
-                for hucre in satir.find_all(['td', 'th'])
-            ]
+            hucreler = satir.find_all(['td', 'th'])
 
-            if len(sutunlar) < MIN_SUTUN:
+            if len(hucreler) < MIN_SUTUN:
                 continue
 
-            program_kodu = sutunlar[SUTUN_ESLEME["program_kodu"]]
+            def metin(i):
+                return temizle(hucreler[i].get_text(separator=" ", strip=True))
+
+            program_kodu = metin(4)
             bu_sayfa_kodlari.append(program_kodu)
 
             if program_kodu in gorulen_kodlar:
                 continue
 
-            program = {alan: sutunlar[idx] for alan, idx in SUTUN_ESLEME.items()}
+            # Üniversite adı + şehir ayrımı
+            universite, sehir = hucre_ayir(hucreler[6])
+            # Bölüm/program adı + fakülte ayrımı
+            bolum_program, fakulte = hucre_ayir(hucreler[7])
+
+            # Gerçek program detay linki üniversite hücresindeki <a> etiketinde
+            link_tag = hucreler[6].find('a')
+            program_id = None
+            if link_tag and link_tag.get('href'):
+                href = link_tag['href']
+                if 'javascript' not in href:
+                    program_id = href.rstrip('/').split('/')[-1]
+
+            program = {
+                "sira_no": metin(3),
+                "program_kodu": program_kodu,
+                "puan_tipi": metin(5),
+                "universite": universite,
+                "sehir": sehir,
+                "bolum_program": bolum_program,
+                "fakulte": fakulte,
+                "ek_bilgi": metin(8),
+                "sure_yil": metin(9),
+                "basari_sirasi_2025": metin(10),
+                "basari_sirasi_2024": metin(11),
+                "basari_sirasi_2023": metin(12),
+                "taban_puani_2025": metin(13),
+                "taban_puani_2024": metin(14),
+                "taban_puani_2023": metin(15),
+                "kontenjan_2025_genel": metin(16),
+                "kontenjan_2024_genel": metin(17),
+                "kontenjan_2023_genel": metin(18),
+                "kontenjan_2025_yrlsn": metin(19),
+                "ozel_kosullar": metin(20),
+                "akreditasyon": metin(21),
+                "tyc_durumu": metin(22),
+                "program_id": program_id,
+            }
 
             tum_programlar.append(program)
             gorulen_kodlar.add(program_kodu)
