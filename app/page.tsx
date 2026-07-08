@@ -164,7 +164,7 @@ export default function Home() {
         total={total}
       />
 
-      <div className="flex-1 p-4">
+      <div className="flex-1 p-4 print:p-0">
         <UniversityTable
           data={data}
           isLoading={isLoading}

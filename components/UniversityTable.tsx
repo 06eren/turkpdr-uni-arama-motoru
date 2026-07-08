@@ -34,9 +34,9 @@ export default function UniversityTable({
   const end = Math.min(page * 50, total);
 
   return (
-    <div className="bg-white border border-gray-100 rounded-xl overflow-hidden shadow-sm">
+    <div className="bg-white border border-gray-100 rounded-xl overflow-hidden shadow-sm print:shadow-none print:border-none">
       {/* Table */}
-      <div className="overflow-x-auto relative" style={{ minHeight: isLoading ? 400 : 'auto' }}>
+      <div className="overflow-x-auto relative print-area" style={{ minHeight: isLoading ? 400 : 'auto' }}>
         {isLoading && (
           <div className="absolute inset-0 bg-white/70 z-10 flex items-center justify-center">
             <div className="flex flex-col items-center gap-3">
@@ -46,7 +46,7 @@ export default function UniversityTable({
           </div>
         )}
 
-        <table className="w-full text-sm text-left border-collapse whitespace-nowrap">
+        <table className="w-full text-sm text-left border-collapse whitespace-nowrap print:whitespace-normal print:text-xs">
           <thead>
             {/* Group row */}
             <tr className="bg-gray-50 text-[10px] font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">
@@ -164,7 +164,7 @@ export default function UniversityTable({
       </div>
 
       {/* Pagination Bar */}
-      <div className="border-t border-gray-100 px-4 py-3 flex items-center justify-between bg-gray-50/50 flex-wrap gap-3">
+      <div className="border-t border-gray-100 px-4 py-3 flex items-center justify-between bg-gray-50/50 flex-wrap gap-3 print:hidden">
         <div className="text-xs text-gray-500">
           {total > 0 ? (
             <><span className="font-semibold text-gray-800">{start.toLocaleString('tr-TR')}–{end.toLocaleString('tr-TR')}</span> / toplam <span className="font-semibold text-gray-800">{total.toLocaleString('tr-TR')}</span> program</>

@@ -89,7 +89,14 @@ export async function GET(request: Request) {
     // Program türü filtresi
     if (program_turu) {
       const arr = program_turu.split(',');
-      if (!arr.includes(item.program_turu)) return false;
+      if (!arr.some(t => {
+        const itemTuru = item.program_turu || '';
+        if (t === 'ÖNLİSANS' || t === 'NLISANS') return itemTuru.includes('NLISANS') || itemTuru.includes('ÖNLİSANS') || itemTuru.includes('ÖNLISANS');
+        if (t === 'LISANS' || t === 'LİSANS') return itemTuru === 'LISANS' || itemTuru === 'LİSANS';
+        return itemTuru === t;
+      })) {
+        return false;
+      }
     }
 
     // Üniversite türü filtresi
