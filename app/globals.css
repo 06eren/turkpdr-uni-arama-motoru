@@ -60,7 +60,7 @@ body {
 @media print {
   @page {
     size: landscape;
-    margin: 10mm;
+    margin: 8mm;
   }
   
   * {
@@ -76,26 +76,11 @@ body {
 
   .print-area table {
     width: 100% !important;
-    border-collapse: collapse !important;
     page-break-inside: auto;
   }
   
   .print-area tr {
     page-break-inside: avoid;
     page-break-after: auto;
-  }
-
-  .print-area th, .print-area td {
-    border: 1px solid #e5e7eb !important;
-    padding: 6px 8px !important;
-    font-size: 11px !important;
-    white-space: normal !important;
-  }
-
-  /* Etiketleri biraz daha belirgin ve uyumlu yapalım */
-  .print-area span.inline-flex {
-    border: 1px solid #d1d5db !important;
-    padding: 2px 4px !important;
-    border-radius: 4px !important;
   }
 }
